@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>D3: Line chart</title>
+		<script type="text/javascript" src="d3.js"></script>
+		<style type="text/css">
+            
+            h1 {
+				margin-bottom: 25px;
+				font-size: 15px;
+				font-weight: bold;
+                color: black;
+                font-family: Helvetica, sans-serif;
+			}
+            
+            h2 {
+				margin-bottom: 25px;
+				font-size: 8px;
+                color: black;
+                font-family: Helvetica, sans-serif;
+			}
+            
+            p {
+				margin-bottom: 15px;
+				font-size: 12px;
+                color: black;
+                font-family: Helvetica, sans-serif;
+			}
+            
+            svg text {
+                font-size: 11px;
+                font-family: sans-serif;
+                text-anchor: left;
+                fill: black;
+            }
+
+
+			.line {
+				fill: none;
+				stroke: teal;
+				stroke-width: 0.5;
+			}
+
+		</style>
+	</head>
+	<body>
+        <h1> Subway Ridership near the 14th Street Busway in Manhattan by Month </h1> 
+        
+        <p> The 14th Street Busway was implemented in    October 2019, limiting vehicular traffic on this major Manhattan road and giving buses priority.</p>
+        
+        <p> I wanted to look at how the subway, ridership has changed near this busway using the turnstile data published by the MTA. There are four stations along the 14th street busway: 8th Avenue (ACE, L), 6th-7th Avenue (123-BDFM, L), Union Square (NQR, 456, L), and 3rd Avenue (L). </p>
+        
+        <p> These stations will be collectively referred to as the “Busway Stations”. In order to provide comparison to the “Busway Stations”, I identified stations in Manhattan each with similar numbers of ridership and that are located on potential busways. The comparison stations will be collectively referred to 
+        as the “Comparison Stations”. By observing the ridership trends of “Busway Stations” versus “Comparison Stations”, we can better understand the potential impacts of busway on another mode of public transit. </p>
+        
+        <p> In ordered to repair the damaged East River tunnel, L train began reducing services between Manhattan and Brooklyn on April 27th, 2018. In order to accomodate rising travel demand, New York City started the planning of 14th street busway. </p>
+        
+		<script type="text/javascript">
+
+			//Width and height
+			var w = 900;
+			var h = 600;
+			var padding = 40;
+			
+			var dataset, xScale, yScale, xAxis, yAxis, line, line2;  //Empty, for now
+            
+            //For converting Dates to strings
+			var formatTime = d3.timeFormat("%b");
+            
+            //Additional year format
+            var formatYear = d3.timeFormat("%Y")
+
+			//Function for converting CSV values from strings to Dates and numbers
+			var rowConverter = function(d) {
+				return {
+					date: new Date(+d.Year, (+d.Month - 1)),  //Make a new Date object for each year + month
+					busway: +d.Busway,  //Convert from string to numeric
+                    compare: +d.Comparison 
+				};
+			}
+
+			//Load in data
+			d3.csv("ridership.csv", rowConverter, function(data) {
+
+				var dataset = data;
+
+				//Print data to console as table, for verification
+				console.table(dataset, ["date", "busway", "compare"]);
+
+				//Create scale functions
+				xScale = d3.scaleTime()
+							   .domain([
+									d3.min(dataset, function(d) { return d.date; }),
+									d3.max(dataset, function(d) { return d.date; })
+								])
+							   .range([padding, w-40]);
+
+				yScale = d3.scaleLinear()
+								.domain([0, d3.max(dataset, function(d) { return d.compare; })])
+								.range([h - padding, 0]);
+                //Define axes
+				xAxis = d3.axisBottom()
+						   .scale(xScale)
+						   .ticks(17)
+						   .tickFormat(formatTime);
+                
+                //Define year axis
+                rAxis = d3.axisTop()
+                            .scale(xScale)
+                            .ticks(d3.timeYear.every(1))
+                            .tickFormat(formatYear);
+
+				//Define Y axis
+				yAxis = d3.axisLeft()
+						   .scale(yScale)
+						   .ticks(10)
+                           .tickFormat(function (d) {
+                              if ((d / 1000) >= 1) {
+                                d = d / 1000 + "K";
+                              }
+                              return d;
+                            });
+
+				//Define line generator
+				line = d3.line()
+							.x(function(d) { return xScale(d.date); })
+							.y(function(d) { return yScale(d.busway); });
+                
+                line2 = d3.line()
+							.x(function(d) { return xScale(d.date); })
+							.y(function(d) { return yScale(d.compare); });
+				
+				//Create SVG element
+				var svg = d3.select("body")
+							.append("svg")
+							.attr("width", w)
+							.attr("height", h);
+                
+                //Draw Busway Opening Line
+                var theDate = d3.timeParse("%b %y")("Oct 19")
+                
+                svg.append("line")
+					.attr("class", "busway line")
+                    .style("stroke", "grey")
+					.attr("x1", xScale(theDate))
+					.attr("x2", xScale(theDate))
+					.attr("y1", 0)
+					.attr("y2", h-padding);
+                
+                //Label Busway Opening Line
+                svg.append("text")
+					.attr("class", "busway label")
+					.attr("x", xScale(theDate)-70)
+					.attr("y", padding+100)
+					.text("14th Street Busway opened");
+
+                
+                //Draw COVID-19 Line
+                var aDate = d3.timeParse("%b %y")("Mar 20")
+                
+                svg.append("line")
+					.attr("class", "COVID line")
+                    .style("stroke", "grey")
+					.attr("x1", xScale(aDate))
+					.attr("x2", xScale(aDate))
+					.attr("y1", 0)
+					.attr("y2", h-padding);
+                
+                //Label COVID-19 Line
+                svg.append("text")
+					.attr("class", "COVID label")
+					.attr("x", xScale(aDate)-70)
+					.attr("y", padding+100)
+					.text("COVID-19 pandemic");
+                
+                svg.append("text")
+					.attr("class", "COVID label")
+					.attr("x", xScale(aDate)-70)
+					.attr("y", padding+111)
+					.text("emerged in New York");
+
+              
+				//Create line
+				svg.append("path")
+					.datum(dataset)
+					.attr("class", "line")
+					.attr("d", line);
+                    
+                
+                svg.append("path")
+					.datum(dataset)
+					.attr("class", "line")
+                    .style("stroke", "red")
+					.attr("d", line2);
+                
+                //Label lines
+                svg.append("text")
+                    .attr("class", "Comparison mark")
+					.attr("x", 5+padding)
+					.attr("y", 95)
+                    .style("fill", "red")
+                    .text("Comparison stations");
+                
+                svg.append("text")
+                    .attr("class", "Comparison mark")
+					.attr("x", 5+padding)
+					.attr("y", 185)
+                    .style("fill", "teal")
+                    .text("Busway stations");
+
+                //Create axes
+				svg.append("g")
+					.attr("class", "axis")
+					.attr("transform", "translate(0," + (h - padding) + ")")
+					.call(xAxis);
+
+				svg.append("g")
+					.attr("class", "axis")
+					.attr("transform", "translate(" + padding + ",0)")
+					.call(yAxis);
+                
+                svg.append("g")
+					.attr("class", "axis")
+					.attr("transform", "translate(0," + (h - padding + 35) + ")")
+					.call(rAxis);
+                
+                
+			});
+			
+		</script>
+        
+        <h2> Data source: MTA </h2>
+
+        
+	</body>
+</html>
